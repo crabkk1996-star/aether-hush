@@ -1,0 +1,104 @@
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect, useState, useRef, createContext } from 'react'
+import Navigation from './components/Navigation'
+import Footer from './components/Footer'
+import AmbientGrainOverlay from './components/AmbientGrainOverlay'
+import AudioPlayer from './components/AudioPlayer'
+import Home from './pages/Home'
+import Music from './pages/Music'
+import Blog from './pages/Blog'
+import Shop from './pages/Shop'
+import Contact from './pages/Contact'
+import gsap from 'gsap'
+
+interface CartContextType {
+  cartCount: number
+  addToCart: () => void
+}
+
+export const CartContext = createContext<CartContextType>({
+  cartCount: 0,
+  addToCart: () => {},
+})
+
+function PageTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  const pageRef = useRef<HTMLDivElement>(null)
+  const [displayLocation, setDisplayLocation] = useState(location)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  useEffect(() => {
+    if (location.pathname !== displayLocation.pathname) {
+      setIsTransitioning(true)
+      const el = pageRef.current
+      if (el) {
+        gsap.to(el, {
+          opacity: 0,
+          duration: 0.4,
+          ease: 'power2.inOut',
+          onComplete: () => {
+            setDisplayLocation(location)
+            window.scrollTo(0, 0)
+          },
+        })
+      }
+    }
+  }, [location, displayLocation])
+
+  useEffect(() => {
+    if (isTransitioning) {
+      const el = pageRef.current
+      if (el) {
+        gsap.fromTo(
+          el,
+          { opacity: 0 },
+          {
+            opacity: 1,
+            duration: 0.6,
+            delay: 0.1,
+            ease: 'expo.out',
+            onComplete: () => setIsTransitioning(false),
+          }
+        )
+      }
+    }
+  }, [displayLocation, isTransitioning])
+
+  return (
+    <div ref={pageRef}>
+      <Routes location={displayLocation}>
+        {children as any}
+      </Routes>
+    </div>
+  )
+}
+
+function App() {
+  const [cartCount, setCartCount] = useState(0)
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  const addToCart = () => {
+    setCartCount((prev) => prev + 1)
+  }
+
+  return (
+    <CartContext.Provider value={{ cartCount, addToCart }}>
+      <div className="relative min-h-screen">
+        <AmbientGrainOverlay />
+        <Navigation />
+        <PageTransition>
+          <Route path="/" element={<Home />} />
+          <Route path="/music" element={<Music />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/contact" element={<Contact />} />
+        </PageTransition>
+        <Footer />
+        {isHome && <AudioPlayer />}
+      </div>
+    </CartContext.Provider>
+  )
+}
+
+export default App
